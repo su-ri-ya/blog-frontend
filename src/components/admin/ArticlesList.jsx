@@ -1,35 +1,37 @@
 import { useState } from "react";
-import {
-  Button
-} from "@/components/ui/button";
-import {
-  Input
-} from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Edit,
   Trash2,
   Search,
   FileText,
   Heart,
-  MessageCircle
+  MessageCircle,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
-const ArticlesList = ({ articles = [], onEdit, onDelete }) => {
-
-  
-
-  const
-   { toast } = useToast();
+const ArticlesList = ({
+  articles = [],
+  page = 1,
+  totalPages = 1,
+  onNext,
+  onPrev,
+  onEdit,
+  onDelete,
+}) => {
+  const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
 
+  const safeArticles = Array.isArray(articles) ? articles : [];
 
-  const filteredArticles = articles.filter(a =>
+  const filteredArticles = safeArticles.filter((a) =>
     a.title?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const handleDelete = (article) => {
-    if (!window.confirm(`Delete "${article.title}"? This is permanent.`)) return;
+    if (!window.confirm(`Delete "${article.title}"? This is permanent.`))
+      return;
 
     onDelete(article._id || article.id);
 
@@ -43,7 +45,7 @@ const ArticlesList = ({ articles = [], onEdit, onDelete }) => {
     date ? new Date(date).toLocaleDateString() : "—";
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 scroll-mt-24">
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold">All Articles</h1>
@@ -63,15 +65,14 @@ const ArticlesList = ({ articles = [], onEdit, onDelete }) => {
         />
       </div>
 
-      {/* Grid */}
-      {filteredArticles.length ? (
+      {/* Articles Grid */}
+      {filteredArticles.length > 0 ? (
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {filteredArticles.map((article) => (
             <div
               key={article._id || article.id}
               className="group bg-card border rounded-xl overflow-hidden transition hover:shadow-lg"
             >
-              {/* Poster */}
               {article.posterUrl ? (
                 <img
                   src={article.posterUrl}
@@ -84,30 +85,26 @@ const ArticlesList = ({ articles = [], onEdit, onDelete }) => {
                 </div>
               )}
 
-              {/* Content */}
               <div className="p-4 space-y-3">
                 <div>
                   <h3 className="font-semibold text-lg truncate">
                     {article.title}
                   </h3>
                   <p className="text-sm text-muted-foreground">
-                    {formatDate(article.posteddate)}
+                    {formatDate(article.posteddate || article.createdAt)}
                   </p>
                 </div>
 
-                {/* Stats */}
                 <div className="flex gap-4 text-sm text-muted-foreground">
                   <span className="flex items-center gap-1">
-                    <Heart className="w-4 h-4" />
-                    {article.likes || 0}
+                    <Heart className="w-4 h-4" /> {article.likes || 0}
                   </span>
                   <span className="flex items-center gap-1">
-                    <MessageCircle className="w-4 h-4" />
+                    <MessageCircle className="w-4 h-4" />{" "}
                     {article.comments?.length || 0}
                   </span>
                 </div>
 
-                {/* Actions */}
                 <div className="flex gap-2 pt-2">
                   <Button
                     size="sm"
@@ -141,6 +138,27 @@ const ArticlesList = ({ articles = [], onEdit, onDelete }) => {
           </p>
         </div>
       )}
+
+      {/* Pagination */}
+      <div className="flex justify-center gap-4 mt-6">
+        <Button
+          onClick={onPrev}
+          disabled={page <= 1}
+          variant="outline"
+        >
+          Previous
+        </Button>
+        <span className="flex items-center gap-2 px-4">
+          Page {page} of {totalPages}
+        </span>
+        <Button
+          onClick={onNext}
+          disabled={page >= totalPages}
+          variant="outline"
+        >
+          Next
+        </Button>
+      </div>
     </div>
   );
 };

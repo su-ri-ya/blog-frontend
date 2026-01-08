@@ -10,4 +10,8 @@ export const getMe = () =>
   api.get("/admin/me");
 
 export const updateMe = (data) =>
-  api.put("/admin/me", data);
+  api.put("/admin/me", data, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+  });

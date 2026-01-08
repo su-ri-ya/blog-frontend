@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import AdminSidebar from "@/components/admin/AdminSidebar";
 import AdminDashboard from "@/components/admin/AdminDashboard";
 import ArticlesList from "@/components/admin/ArticlesList";
@@ -6,69 +6,63 @@ import ArticleForm from "@/components/admin/ArticleForm";
 import AdminProfile from "@/components/admin/AdminProfile";
 import AdminSettings from "@/components/admin/AdminSettings";
 import { useAuth } from "../context/AuthContext";
-import { getMovieArticle } from "../services/movie.api";
+import { useArticles } from "../context/ArticlesContext";
+import { deleteMovieArticle } from "@/services/movie.api";
+import { Atom, LifeLine } from "react-loading-indicators";
 
 const Admin = () => {
   const [activeTab, setActiveTab] = useState("dashboard");
-  const [articles, setArticles] = useState([]);
   const [editingArticle, setEditingArticle] = useState(null);
 
 
   const { admin, loading } = useAuth();
+  const {
+  articles,
+  articlesLoading,
+  page,
+  totalPages,
+  setPage,
+  refetchArticles,
+} = useArticles();
+
+  console.log(articles);
 
 
-  if (loading) return <div>Loading admin…</div>;
+  if (loading) return <Atom color="#000000" size="medium" text="" textColor="" />
   if (!admin) return <div>NO ADMIN FOUND</div>;
-
-
-  // Load articles from localStorage
-  useEffect(() => {
-    const saved = localStorage.getItem("adminArticles");
-    if (saved) {
-      const article=getMovieArticle()
-      setArticles(article);
-    }
-  }, []);
-
-  // Save articles to localStorage
-  const saveArticles = (newArticles) => {
-    setArticles(newArticles);
-    localStorage.setItem("adminArticles", JSON.stringify(newArticles));
-  };
-
-  const handleSaveArticle = (article) => {
-    const existing = articles.find((a) => a.id === article.id);
-    if (existing) {
-      // Update existing
-      saveArticles(articles.map((a) => (a.id === article.id ? article : a)));
-    } else {
-      // Add new
-      saveArticles([article, ...articles]);
-    }
-    setEditingArticle(null);
-    if (activeTab === "articles") {
-      // Stay on articles list
-    } else {
-      setActiveTab("articles");
-    }
-  };
-
-  const handleDeleteArticle = (id) => {
-    saveArticles(articles.filter((a) => a.id !== id));
-  };
+  if (articlesLoading)
+  return (
+    <div className="flex items-center justify-center min-h-screen">
+     <LifeLine color="white" size="medium" text="" textColor="" />
+    </div>
+  );
 
   const handleEditArticle = (article) => {
     setEditingArticle(article);
     setActiveTab("edit-article");
   };
 
+  const handleDeleteArticle = async (id) => {
+    try {
+      await deleteMovieArticle(id);
+      refetchArticles();
+    } catch (err) {
+      console.error("Delete failed", err);
+    }
+  };
+
+  const handleArticleSaved = () => {
+    setEditingArticle(null);
+    setActiveTab("articles");
+    refetchArticles();
+  };
+
   const renderContent = () => {
-    // Handle edit mode
     if (activeTab === "edit-article" && editingArticle) {
       return (
         <ArticleForm
           article={editingArticle}
-          onSave={handleSaveArticle}
+          onSuccess={handleArticleSaved}
           onCancel={() => {
             setEditingArticle(null);
             setActiveTab("articles");
@@ -80,20 +74,34 @@ const Admin = () => {
     switch (activeTab) {
       case "dashboard":
         return <AdminDashboard articles={articles} />;
+
       case "articles":
         return (
           <ArticlesList
             articles={articles}
+            page={page}
+            totalPages={totalPages}
+            onNext={() => setPage((p) => Math.min(p + 1, totalPages))}
+            onPrev={() => setPage((p) => Math.max(p - 1, 1))}
             onEdit={handleEditArticle}
             onDelete={handleDeleteArticle}
           />
         );
+
       case "new-article":
-        return <ArticleForm onSave={handleSaveArticle} onCancel={() => setActiveTab("dashboard")} />;
+        return (
+          <ArticleForm
+            onSuccess={handleArticleSaved}
+            onCancel={() => setActiveTab("dashboard")}
+          />
+        );
+
       case "profile":
         return <AdminProfile />;
+
       case "settings":
         return <AdminSettings />;
+
       default:
         return <AdminDashboard articles={articles} />;
     }

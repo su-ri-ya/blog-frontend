@@ -11,19 +11,23 @@ import { ArticleLikes } from "@/components/ArticleLikes";
 import { ArticleComments } from "@/components/ArticleComments";
 import ArticlePreview from "@/components/ArticlePreview";
 import Section from "@/components/Section";
-import {
-  GridWrapper,
-  GridContent,
-} from "@/components/GridContainer";
-import { getArticleBySlug } from "@/data/articles";
+import { GridWrapper, GridContent } from "@/components/GridContainer";
+import { useArticles } from "@/context/ArticlesContext";
 
 const Article = () => {
-  const { slug } = useParams();
+  const { id } = useParams();
+  const { articles, articlesLoading } = useArticles();
 
-  // Get article data based on slug
-  const articleData = slug ? getArticleBySlug(slug) : undefined;
+  if (articlesLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-muted-foreground">Loading article…</p>
+      </div>
+    );
+  }
 
-  // If article not found, redirect to 404
+  const articleData = articles.find((a) => a._id === id);
+
   if (!articleData) {
     return <Navigate to="/404" replace />;
   }
@@ -33,49 +37,45 @@ const Article = () => {
       <Header />
 
       <ArticleWrapper>
-        {/* Title-Dominant Hero Section */}
+        {/* Hero */}
         <section className="article-grid relative py-20">
-          {/* Main Content Container */}
-          <div className="article-hero relative text-center flex flex-col items-center">
-            {/* Back Button - Top Left */}
+          <div className="article-hero text-center flex flex-col items-center">
+
+            {/* Back */}
             <div className="w-full mb-4">
               <Link
-                to="/blog"
-                className="inline-flex items-center text-[0.875rem] font-medium text-muted-foreground hover:text-foreground transition-colors group"
+                to="/"
+                className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground transition group"
               >
                 <ArrowLeft className="mr-2 h-5 w-5 transition-transform group-hover:-translate-x-1" />
                 Back
               </Link>
             </div>
 
-            {/* Massive Title */}
-            <h1 className="font-display font-semibold text-[4rem] md:text-[6rem] leading-[1.1] mb-8">
+            {/* Title */}
+            <h1 className="font-display font-semibold text-[3rem] md:text-[5rem] leading-tight mb-8">
               {articleData.title}
             </h1>
 
-            {/* Author Info */}
-            <div className="flex items-center gap-4 mb-12">
-              <div className="w-[3.125rem] h-[3.125rem] rounded-full overflow-hidden">
-                <img
-                  src={articleData.author.avatar}
-                  alt={articleData.author.name}
-                  className="w-full h-full object-cover"
-                />
+            {/* Author */}
+            {articleData.adminId && (
+              <div className="flex items-center gap-4 mb-12">
+                <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center text-sm font-semibold">
+                  {articleData.adminId.name?.[0]}
+                </div>
+                <div className="text-left">
+                  <p className="font-semibold">{articleData.adminId.name}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {articleData.adminId.email}
+                  </p>
+                </div>
               </div>
-              <div className="font-sans text-left">
-                <p className="text-[1rem] leading-none font-semibold text-foreground mb-0.5">
-                  {articleData.author.name}
-                </p>
-                <p className="text-[0.875rem] leading-none text-muted-foreground">
-                  {articleData.author.title}
-                </p>
-              </div>
-            </div>
+            )}
 
-            {/* Hero Image - Full Width */}
-            <div className="w-full aspect-[16/9] overflow-hidden">
+            {/* Poster */}
+            <div className="w-full aspect-[16/9] overflow-hidden rounded-xl">
               <img
-                src={articleData.heroImage}
+                src={articleData.posterUrl}
                 alt={articleData.title}
                 className="w-full h-full object-cover"
               />
@@ -83,120 +83,71 @@ const Article = () => {
           </div>
         </section>
 
+        {/* Content */}
         <ArticleContainer>
           <ArticleContent>
-            <time className="block text-muted-foreground text-[0.875rem] font-sans tracking-wide mb-8">
-              {articleData.publishDate}
+            <time className="block text-sm text-muted-foreground mb-8">
+              {articleData.posteddate}
             </time>
-            {articleData.content.map((block, index) => {
-              switch (block.type) {
-                case "paragraph":
-                  return <p key={index}>{block.content}</p>;
 
-                case "heading":
-                  return block.level === 2 ? (
-                    <h2 key={index}>{block.content}</h2>
-                  ) : (
-                    <h3 key={index}>{block.content}</h3>
-                  );
+            {articleData.pov && <p>{articleData.pov}</p>}
 
-                case "image":
-                  return (
-                    <figure key={index} className="my-12">
-                      <div className="relative w-full aspect-[16/9] overflow-hidden bg-muted">
-                        <img
-                          src={block.src}
-                          alt={block.alt}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                      {block.caption && (
-                        <figcaption className="mt-3 text-sm text-center text-muted-foreground">
-                          {block.caption}
-                        </figcaption>
-                      )}
-                    </figure>
-                  );
-
-                case "blockquote-big":
-                  return (
-                    <figure key={index} className="blockquote-big">
-                      <blockquote>{block.content}</blockquote>
-                      {block.author && <figcaption>{block.author}</figcaption>}
-                    </figure>
-                  );
-
-                default:
-                  return null;
-              }
-            })}
+            {/* Frames */}
+            {[articleData.frame1Url, articleData.frame2Url, articleData.frame3Url]
+              .filter(Boolean)
+              .map((src, i) => (
+                <figure key={i} className="my-12">
+                  <div className="aspect-[16/9] overflow-hidden rounded-xl">
+                    <img
+                      src={src}
+                      alt={`${articleData.title} frame ${i + 1}`}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                </figure>
+              ))}
           </ArticleContent>
 
-          {/* Two Image Gallery */}
-          {articleData.galleryImages && articleData.galleryImages.length >= 2 && (
-            <div className="article-hero mt-16">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="aspect-[4/3] overflow-hidden">
-                  <img
-                    src={articleData.galleryImages[0].src}
-                    alt={articleData.galleryImages[0].alt}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-                <div className="aspect-[4/3] overflow-hidden">
-                  <img
-                    src={articleData.galleryImages[1].src}
-                    alt={articleData.galleryImages[1].alt}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Likes and Share Section */}
-          <div className="article-hero mt-16 mb-8">
-            <div className="flex flex-col items-center gap-6">
-              <ArticleLikes articleSlug={articleData.slug} />
-              <h3 className="font-display font-semibold text-[1.25rem] text-center text-muted-foreground">
-                Share This Article
-              </h3>
-              <TopShares
-                facebookUrl={`https://www.facebook.com/sharer/sharer.php?u=https://example.com/article/${articleData.slug}`}
-                twitterUrl={`https://twitter.com/intent/tweet?url=https://example.com/article/${articleData.slug}`}
-                linkedinUrl={`https://www.linkedin.com/shareArticle?url=https://example.com/article/${articleData.slug}`}
-              />
-            </div>
+          {/* Likes & Share */}
+          <div className="article-hero mt-16 mb-8 text-center">
+            <ArticleLikes articleId={articleData._id} />
+            <h3 className="mt-6 font-semibold text-muted-foreground">
+              Share This Article
+            </h3>
+            <TopShares
+              facebookUrl={`https://www.facebook.com/sharer/sharer.php?u=${window.location.href}`}
+              twitterUrl={`https://twitter.com/intent/tweet?url=${window.location.href}`}
+              linkedinUrl={`https://www.linkedin.com/shareArticle?url=${window.location.href}`}
+            />
           </div>
 
-          {/* Comments Section */}
+          {/* Comments */}
           <div className="article-content mt-16">
-            <ArticleComments articleSlug={articleData.slug} />
+            <ArticleComments articleId={articleData._id} />
           </div>
         </ArticleContainer>
       </ArticleWrapper>
 
-      {/* Related Article */}
+      {/* Related */}
       <Section>
         <GridWrapper>
           <GridContent>
-            <div className="article-full-width">
-              <h2 className="text-[2.25rem] md:text-[3rem] font-display font-bold mb-12 text-center">
-                Related Article
-              </h2>
+            <h2 className="text-3xl font-bold mb-12 text-center">
+              Related Articles
+            </h2>
 
-              <div className="max-w-[600px] mx-auto">
-                {articleData.relatedArticles.slice(0, 1).map((article) => (
+            <div className="max-w-[600px] mx-auto">
+              {articles
+                .filter((a) => a._id !== articleData._id)
+                .slice(0, 1)
+                .map((article) => (
                   <ArticlePreview
-                    key={article.slug}
+                    key={article._id}
+                    _id={article._id}
                     title={article.title}
-                    slug={article.slug}
-                    image={article.image}
-                    imageAlt={article.title}
-                    publishDate="Recent"
+                    posterUrl={article.posterUrl}
                   />
                 ))}
-              </div>
             </div>
           </GridContent>
         </GridWrapper>
@@ -204,10 +155,8 @@ const Article = () => {
 
       {/* Footer */}
       <footer className="border-t border-border mt-12">
-        <div className="article-grid py-12">
-          <div className="article-hero text-center text-sm text-muted-foreground">
-            <p>© 2024 Voyager Press. All rights reserved.</p>
-          </div>
+        <div className="py-12 text-center text-sm text-muted-foreground">
+          © 2025 Wallflower. All rights reserved.
         </div>
       </footer>
     </div>

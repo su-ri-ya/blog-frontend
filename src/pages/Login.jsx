@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { loginAdmin } from "@/services/admin.api";
 import { useAuth } from "../context/AuthContext";
+import { getMe } from "@/services/admin.api";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -19,10 +20,11 @@ const Login = () => {
     setLoading(true);
 
     try {
-      const res = await loginAdmin({ email, password });
-    console.log("Login response data:", res.data);
+    await loginAdmin({ email, password });
+    
+    const response=await getMe();
 
-    setAdmin(res.data.admin); // <-- FIXED
+    setAdmin(response.data.admin); // <-- FIXED
 
     toast({
       title: "Login successful",
